@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import h5py
 import scipy.io
@@ -11,14 +12,9 @@ from keras.layers.convolutional import Convolution1D, MaxPooling1D
 from keras.regularizers import l2, activity_l1
 from keras.constraints import maxnorm
 from keras.layers.recurrent import LSTM, GRU
-from keras.callbacks import ModelCheckpoint, EarlyStopping
 from seya.layers.recurrent import Bidirectional
-#import theano
-from keras.utils.layer_utils import print_layer_shapes
 
-
-
-
+import theano
 
 forward_lstm = LSTM(input_dim=320, output_dim=320, return_sequences=True)
 backward_lstm = LSTM(input_dim=320, output_dim=320, return_sequences=True)
@@ -39,7 +35,6 @@ model.add(MaxPooling1D(pool_length=13, stride=13))
 
 model.add(Dropout(0.2))
 
-
 model.add(brnn)
 
 model.add(Dropout(0.5))
@@ -53,28 +48,23 @@ model.add(Dense(input_dim=925, output_dim=919))
 model.add(Activation('sigmoid'))
 
 print 'compiling model'
-model.compile(loss='binary_crossentropy', optimizer='rmsprop', class_mode="binary")
+#model.compile(loss='binary_crossentropy', optimizer='rmsprop', class_mode="binary")
 
 
-print 'loading data'
-trainmat = h5py.File('data/deepsea_train/train.mat')
-validmat = scipy.io.loadmat('data/deepsea_train/valid.mat')
-testmat = scipy.io.loadmat('data/deepsea_train/test.mat')
+model.load_weights('DanQ_bestmodel.hdf5')
 
-X_train = np.transpose(np.array(trainmat['trainxdata']),axes=(2,0,1))
-y_train = np.array(trainmat['traindata']).T
+fmodel = Sequential(model.layers[0:3])
+fmodelj = fmodel.to_json()
+fmodel.save_weights('pre_brnn_weights.h5')
+with open("pre_brnn.json",'w') as tfile:
+    tfile.write(fmodelj)
+    
 
 
-
-print 'running at most 60 epochs'
-
-checkpointer = ModelCheckpoint(filepath="DanQ_bestmodel.hdf5", verbose=1, save_best_only=True)
-earlystopper = EarlyStopping(monitor='val_loss', patience=5, verbose=1)
-
-model.fit(X_train, y_train, batch_size=100, nb_epoch=60, shuffle=True, show_accuracy=True, validation_data=(np.transpose(validmat['validxdata'],axes=(0,2,1)), validmat['validdata']), callbacks=[checkpointer,earlystopper])
-
-model
-tresults = model.evaluate(np.transpose(testmat['testxdata'],axes=(0,2,1)), testmat['testdata'],show_accuracy=True)
-
-print tresults
-
+rmodel = Sequential(model.layers[4:])
+rmodel.save_weights('post_brnn_weights.h5')
+rmpdelj = rmodel.to_json()
+with open("post_brnn.json",'w') as tfile:
+    tfile.write(rmodelj)
+                    
+                    

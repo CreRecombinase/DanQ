@@ -6,23 +6,38 @@ np.random.seed(1337) # for reproducibility
 from keras.preprocessing import sequence
 from keras.optimizers import RMSprop
 from keras.models import Sequential
+from keras.layers import Bidirectional
 from keras.layers.core import Dense, Dropout, Activation, Flatten
 from keras.layers.convolutional import Convolution1D, MaxPooling1D
 from keras.regularizers import l2, activity_l1
 from keras.constraints import maxnorm
 from keras.layers.recurrent import LSTM, GRU
 from keras.callbacks import ModelCheckpoint, EarlyStopping
-from seya.layers.recurrent import Bidirectional
-#import theano
-from keras.utils.layer_utils import print_layer_shapes
+#from keras.utils.layer_utils import print_layer_shapes
+# import theano
+# def shared_zeros(shape, dtype=theano.config.floatX, name='', n=1):
+#     shape = shape if n == 1 else (n,) + shape
+#     return theano.shared(np.zeros(shape, dtype=dtype), name=name)
+
+# def sharedX(X, dtype=theano.config.floatX, name=None):
+#     return theano.shared(np.asarray(X, dtype=dtype), name=name)
+
+# def floatX(val):
+#     return np.asarray(val, dtype=theano.config.floatX)
 
 
 
+print 'loading data'
+trainmat = h5py.File('data/deepsea_train/train.mat')
+validmat = scipy.io.loadmat('data/deepsea_train/valid.mat')
+testmat = scipy.io.loadmat('data/deepsea_train/test.mat')
 
+X_train = np.transpose(np.array(trainmat['trainxdata']),axes=(2,0,1))
+y_train = np.array(trainmat['traindata']).T
 
-forward_lstm = LSTM(input_dim=320, output_dim=320, return_sequences=True)
-backward_lstm = LSTM(input_dim=320, output_dim=320, return_sequences=True)
-brnn = Bidirectional(forward=forward_lstm, backward=backward_lstm, return_sequences=True)
+# forward_lstm = LSTM(input_dim=320, output_dim=320, return_sequences=True)
+# backward_lstm = LSTM(input_dim=320, output_dim=320, return_sequences=True)
+# brnn = Bidirectional(forward=forward_lstm, backward=backward_lstm, return_sequences=True)
 
 print 'building model'
 
@@ -39,8 +54,7 @@ model.add(MaxPooling1D(pool_length=13, stride=13))
 
 model.add(Dropout(0.2))
 
-
-model.add(brnn)
+model.add(Bidirectional(LSTM(input_dim=320,output_dim=320,return_sequences=True)))
 
 model.add(Dropout(0.5))
 
@@ -55,25 +69,13 @@ model.add(Activation('sigmoid'))
 print 'compiling model'
 model.compile(loss='binary_crossentropy', optimizer='rmsprop', class_mode="binary")
 
-
-print 'loading data'
-trainmat = h5py.File('data/deepsea_train/train.mat')
-validmat = scipy.io.loadmat('data/deepsea_train/valid.mat')
-testmat = scipy.io.loadmat('data/deepsea_train/test.mat')
-
-X_train = np.transpose(np.array(trainmat['trainxdata']),axes=(2,0,1))
-y_train = np.array(trainmat['traindata']).T
-
-
-
 print 'running at most 60 epochs'
 
-checkpointer = ModelCheckpoint(filepath="DanQ_bestmodel.hdf5", verbose=1, save_best_only=True)
+checkpointer = ModelCheckpoint(filepath="DanQ_bestmodel_x4.hdf5", verbose=1, save_best_only=True)
 earlystopper = EarlyStopping(monitor='val_loss', patience=5, verbose=1)
 
 model.fit(X_train, y_train, batch_size=100, nb_epoch=60, shuffle=True, show_accuracy=True, validation_data=(np.transpose(validmat['validxdata'],axes=(0,2,1)), validmat['validdata']), callbacks=[checkpointer,earlystopper])
 
-model
 tresults = model.evaluate(np.transpose(testmat['testxdata'],axes=(0,2,1)), testmat['testdata'],show_accuracy=True)
 
 print tresults
