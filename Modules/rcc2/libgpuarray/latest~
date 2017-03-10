@@ -1,0 +1,94 @@
+#%Module1.0#####################################################################
+#
+# this module file tries to figure out as much as possible so it can just be
+# copied to right filename and work
+#
+# modules should be structured like this:
+# modulename/version
+# or with a specific compiler
+# modulename/version+compilermodulename-version
+#
+# Only a single / and a single + can be in the module path, so the compiler
+# should be given as the module name with a - instead of / to separate 
+# the name and version
+#
+#
+# It will check for bin, lib, and man directories in the usual spots and
+# set PATH, LD_LIBRARY_PATH and MANPATH if appropriate
+#
+# It will load the compiler module if one was specified
+# 
+#
+
+# the next line will be replaced with the conflicts for this module
+
+
+set modulename [string map {/ -} [module-info name]]
+
+set mname [lindex [split [module-info name] "/"] 0]
+
+set compiler ""
+
+set mversiontmp [lindex [split [module-info name] "/"] end]
+if { [string match "*+*" $mversiontmp ] } {
+   set mversion [lindex [split $mversiontmp "+"] 0]
+   set compiler [join [lrange [split $mversiontmp "+"] 1 end] "+"]
+   set compileroutput "compiled with $compiler"
+} else {
+   set mversion $mversiontmp
+   set compileroutput "compiled with the system compiler"
+}
+
+proc ModulesHelp { } {
+   global version
+   puts stderr "\tThis module sets up the environment for $mname $mversion $compileroutput."
+}
+
+module-whatis	"setup $mname $mversion $compileroutput"
+conflict "$mname"
+
+#set sys [uname sysname]
+#set os [uname release]
+#set arch [uname machine]
+
+eval set  [ array get env SOFTPATH ]
+eval set  [ array get env DISTARCH ]
+eval set  [ array get env ARCH ]
+eval set  [ array get env DIST ]
+
+# the next line will be replaced with the proper suffix for this software
+set suffix "$DISTARCH"
+
+if [ module-info mode load ] {
+   if { [string compare $compiler ""] != 0 } {
+      #set compilermodulename [string map {- /} $compiler]
+      if { [string match "*-*" $compiler] } {
+         set i [string first "-" $compiler]
+         set compilermodulename [string replace $compiler $i $i "/"]
+      } else {
+         set compilermodulename $compiler
+      }
+      module load $compilermodulename
+      if { [is-loaded $compilermodulename] == 0 } {
+         puts stderr "WARNING: Unable to load compiler module '$compilermodulename'"
+         puts stderr "WARNING: Module '[module-info name]' may not work but loading anyway"
+      }
+   }
+}
+
+set 	appdir   /home/nwknoblauch/$mname
+#if { [string compare $compiler ""] != 0 } {
+#      set   appdir   $appdir+$compiler
+#}
+
+if { ! [ file isdirectory $appdir  ] } {
+   puts stderr "\nERROR: The software directory $appdir does not exist."
+   puts stderr "ERROR: This module is not functional.\n"
+   exit 1
+}
+
+# the next line will be replaced with module dependencies if necessary
+prepend-path LIBRARY_PATH $appdir/lib
+prepend-path LD_LIBRARY_PATH $appdir/lib
+prepend-path CPATH $appdir/include 
+module load python/3.5.2+intel-16.0 cuda/8.0

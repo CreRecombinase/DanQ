@@ -1,0 +1,10 @@
+[global]
+floatX = float32
+device = gpu0 
+force_device = True
+[nvcc]
+fastmath = True
+[blas]
+ldflags=-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -lguide -liomp5 -lmkl_mc -lpthread
+[cuda]
+root=/software/cuda-7.0-el6-x86_64
